@@ -32,39 +32,57 @@ function renderState(virtualDom, componentName, fatherViewRef, scope) {
 }
 
 function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender) {
-  const { tag, cssClasses, children, actions = null } = virtualDom[componentName];
+  const { tag, cssClasses, children, actions = null, scope } = virtualDom[componentName];
   console.info('HTML RENDERING -> ' + tag);
-  const newView = createHtmlElement(tag, cssClasses, actions);
+  const newView = createHtmlElement(tag, cssClasses, actions, scope);
   appendView(fatherViewRef, newView);
-  recursiveRender(children, forceRerender, newView, virtualDom[componentName].scope);
+  recursiveRender(children, forceRerender, newView, scope);
 }
 
 function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender) {
-  const { rebuild, tag, cssClasses, children, actions = null } = virtualDom[componentName];
+  const {
+    rebuild,
+    tag,
+    cssClasses,
+    children,
+    actions = null,
+    scope = {},
+  } = virtualDom[componentName];
   console.info('COMPONENT RENDERING -> ' + componentName);
-  const newView = createHtmlElement(tag, cssClasses, actions, componentName);
+  const newView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
   if (forceRerender || rebuild) appendView(fatherViewRef, newView, rebuild && componentName);
-  recursiveRender(children, forceRerender || rebuild, newView, virtualDom[componentName].scope);
+  recursiveRender(children, forceRerender || rebuild, newView, scope);
   virtualDom[componentName].rebuild = false;
 }
 
-function createHtmlElement(tag, cssClasses, actions, id = null) {
+function createHtmlElement(tag, cssClasses, actions, scope = {}, id = null) {
   const newView = document.createElement(tag);
   if (!!actions && actions.length)
-    actions.forEach(({ type, fn }) => addActionToTemplate(newView, type, fn));
+    actions.forEach((action) => addActionToTemplate(newView, action, scope));
   if (!!cssClasses.length) newView.classList.add([...cssClasses]);
   if (id) newView.setAttribute('id', id);
   return newView;
 }
 
-function addActionToTemplate(template, actionType, callback) {
-  switch (actionType) {
+function addActionToTemplate(template, action, scope) {
+  let { type, fn } = action;
+  fn = fn.bind(formatScope(scope));
+  switch (type) {
     case ACTION_TYPEZ.CLICK:
-      template.addEventListener('click', callback);
+      template.addEventListener('click', fn);
       break;
     default:
       break;
   }
+}
+
+function formatScope(oldScope) {
+  return Object.keys(oldScope).reduce((updatedScope, actualKey) => {
+    if (oldScope[actualKey].type === SCOPE_TYPEZ.STATE) {
+      return { ...updatedScope, [actualKey]: oldScope[actualKey].value };
+    }
+    return { ...updatedScope };
+  }, {});
 }
 
 function appendView(fatherViewRef, newView, componentName) {

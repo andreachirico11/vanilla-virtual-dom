@@ -72,8 +72,9 @@ const VIRTUAL_DOM = {
         actions: [
           {
             type: ACTION_TYPEZ.CLICK,
-            fn: function () {
-              console.log(this);
+            fn() {
+              console.log(this.niceNumber);
+              this.niceNumber++;
             },
           },
         ],
@@ -81,6 +82,10 @@ const VIRTUAL_DOM = {
           btnLabel: {
             type: SCOPE_TYPEZ.STATE,
             value: 'actionnnn',
+          },
+          niceNumber: {
+            type: SCOPE_TYPEZ.STATE,
+            value: 1,
           },
         },
         children: {
