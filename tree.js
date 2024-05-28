@@ -69,9 +69,18 @@ const VIRTUAL_DOM = {
         type: TYPEZ.COMPONENT,
         cssClasses: ['btn'],
         rebuild: false,
+        actions: [
+            {
+                type: ACTION_TYPEZ.CLICK,
+                fn: function() {
+                    console.log(this)
+                }
+            }
+        ],
         children: { 
           [STATE + 1]: {
             type: TYPEZ.STATE,
+            name: 'btnLabel',
             value: 'actionnnn',
           },
         },

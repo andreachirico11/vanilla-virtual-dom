@@ -29,27 +29,39 @@ function renderState(virtualDom, componentName, fatherViewRef) {
 }
 
 function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender) {
-  const { tag, cssClasses, children } = virtualDom[componentName];
+  const { tag, cssClasses, children, actions = null } = virtualDom[componentName];
   console.info('HTML RENDERING -> ' + tag);
-  const newView = createHtmlElement(tag, cssClasses);
+  const newView = createHtmlElement(tag, cssClasses, actions);
   appendView(fatherViewRef, newView);
   recursiveRender(children, forceRerender, newView);
 }
 
 function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender) {
-  const { rebuild, tag, cssClasses, children } = virtualDom[componentName];
+  const { rebuild, tag, cssClasses, children, actions = null } = virtualDom[componentName];
   console.info('COMPONENT RENDERING -> ' + componentName);
-  const newView = createHtmlElement(tag, cssClasses, componentName);
+  const newView = createHtmlElement(tag, cssClasses, actions, componentName);
   if (forceRerender || rebuild) appendView(fatherViewRef, newView, rebuild && componentName);
   recursiveRender(children, forceRerender || rebuild, newView);
   virtualDom[componentName].rebuild = false;
 }
 
-function createHtmlElement(tag, cssClasses, id = null) {
+function createHtmlElement(tag, cssClasses, actions, id = null) {
   const newView = document.createElement(tag);
+  if (!!actions && actions.length)
+    actions.forEach(({ type, fn }) => addActionToTemplate(newView, type, fn));
   if (!!cssClasses.length) newView.classList.add([...cssClasses]);
   if (id) newView.setAttribute('id', id);
   return newView;
+}
+
+function addActionToTemplate(template, actionType, callback) {
+  switch (actionType) {
+    case ACTION_TYPEZ.CLICK:
+      template.addEventListener('click', callback);
+      break;
+    default:
+      break;
+  }
 }
 
 function appendView(fatherViewRef, newView, componentName) {

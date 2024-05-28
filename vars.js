@@ -10,4 +10,8 @@ const TYPEZ = {
   STATE: 'STATE'
 };
 
+const ACTION_TYPEZ = {
+    CLICK: 'CLICK'
+  };
+
 
