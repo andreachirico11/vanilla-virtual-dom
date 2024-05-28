@@ -14,4 +14,8 @@ const ACTION_TYPEZ = {
     CLICK: 'CLICK'
   };
 
+  const SCOPE_TYPEZ = {
+    STATE: 'STATE',
+    ACTION: 'ACTION'
+  };
 

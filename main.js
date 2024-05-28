@@ -1,4 +1,4 @@
-function renderDom(virtualDom, forceRerender = false, fatherViewRef) {
+function renderDom(virtualDom, forceRerender = false, fatherViewRef, fatherScope) {
   Object.keys(virtualDom).forEach((componentName) => {
     const type = virtualDom[componentName].type;
     switch (type) {
@@ -9,7 +9,7 @@ function renderDom(virtualDom, forceRerender = false, fatherViewRef) {
         renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender);
         break;
       case TYPEZ.STATE:
-        renderState(virtualDom, componentName, fatherViewRef);
+        renderState(virtualDom, componentName, fatherViewRef, fatherScope);
         break;
       default:
         renderComponent(virtualDom, componentName, fatherViewRef, forceRerender);
@@ -23,9 +23,12 @@ function renderPlainText(virtualDom, componentName, fatherViewRef) {
   fatherViewRef.textContent = virtualDom[componentName].txt;
 }
 
-function renderState(virtualDom, componentName, fatherViewRef) {
-  console.info('STATE RENDERING -> ' + virtualDom[componentName].value);
-  fatherViewRef.textContent = virtualDom[componentName].value;
+function renderState(virtualDom, componentName, fatherViewRef, scope) {
+  if (!!!scope) return;
+  const { name } = virtualDom[componentName];
+  console.info('STATE RENDERING -> ' + name);
+  if (!scope[name]) throw new Error('Missing scope state');
+  fatherViewRef.textContent = scope[name].value;
 }
 
 function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender) {
@@ -33,7 +36,7 @@ function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerend
   console.info('HTML RENDERING -> ' + tag);
   const newView = createHtmlElement(tag, cssClasses, actions);
   appendView(fatherViewRef, newView);
-  recursiveRender(children, forceRerender, newView);
+  recursiveRender(children, forceRerender, newView, virtualDom[componentName].scope);
 }
 
 function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender) {
@@ -41,7 +44,7 @@ function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender
   console.info('COMPONENT RENDERING -> ' + componentName);
   const newView = createHtmlElement(tag, cssClasses, actions, componentName);
   if (forceRerender || rebuild) appendView(fatherViewRef, newView, rebuild && componentName);
-  recursiveRender(children, forceRerender || rebuild, newView);
+  recursiveRender(children, forceRerender || rebuild, newView, virtualDom[componentName].scope);
   virtualDom[componentName].rebuild = false;
 }
 
@@ -69,6 +72,6 @@ function appendView(fatherViewRef, newView, componentName) {
   else fatherViewRef.appendChild(newView);
 }
 
-function recursiveRender(children, rebuild, newView) {
-  if (!!Object.keys(children)) renderDom(children, rebuild, newView);
+function recursiveRender(children, rebuild, newView, fatherScope) {
+  if (!!Object.keys(children)) renderDom(children, rebuild, newView, fatherScope);
 }

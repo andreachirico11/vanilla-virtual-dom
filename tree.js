@@ -70,18 +70,23 @@ const VIRTUAL_DOM = {
         cssClasses: ['btn'],
         rebuild: false,
         actions: [
-            {
-                type: ACTION_TYPEZ.CLICK,
-                fn: function() {
-                    console.log(this)
-                }
-            }
+          {
+            type: ACTION_TYPEZ.CLICK,
+            fn: function () {
+              console.log(this);
+            },
+          },
         ],
-        children: { 
+        scope: {
+          btnLabel: {
+            type: SCOPE_TYPEZ.STATE,
+            value: 'actionnnn',
+          },
+        },
+        children: {
           [STATE + 1]: {
             type: TYPEZ.STATE,
             name: 'btnLabel',
-            value: 'actionnnn',
           },
         },
       },
