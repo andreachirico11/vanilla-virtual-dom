@@ -3,10 +3,13 @@ function renderDom(virtualDom, forceRerender = false, fatherViewRef) {
     const type = virtualDom[componentName].type;
     switch (type) {
       case TYPEZ.TEXT:
-        renderPlainText(virtualDom, componentName, fatherViewRef, forceRerender);
+        renderPlainText(virtualDom, componentName, fatherViewRef);
         break;
       case TYPEZ.HTML:
         renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender);
+        break;
+      case TYPEZ.STATE:
+        renderState(virtualDom, componentName, fatherViewRef);
         break;
       default:
         renderComponent(virtualDom, componentName, fatherViewRef, forceRerender);
@@ -18,6 +21,11 @@ function renderDom(virtualDom, forceRerender = false, fatherViewRef) {
 function renderPlainText(virtualDom, componentName, fatherViewRef) {
   console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt);
   fatherViewRef.textContent = virtualDom[componentName].txt;
+}
+
+function renderState(virtualDom, componentName, fatherViewRef) {
+  console.info('STATE RENDERING -> ' + virtualDom[componentName].value);
+  fatherViewRef.textContent = virtualDom[componentName].value;
 }
 
 function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender) {
