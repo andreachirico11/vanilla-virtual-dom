@@ -73,7 +73,6 @@ const VIRTUAL_DOM = {
           {
             type: ACTION_TYPEZ.CLICK,
             fn() {
-              console.log(this.niceNumber);
               this.niceNumber++;
             },
           },
