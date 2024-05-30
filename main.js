@@ -134,11 +134,21 @@ function addActionToTemplate(template, action, scope) {
 function formatScope(oldScope) {
   return Object.keys(oldScope).reduce((updatedScope, actualKey) => {
     if (oldScope[actualKey].type === SCOPE_TYPEZ.STATE) {
-      return { ...updatedScope, [actualKey]: oldScope[actualKey].value };
+      return {
+        ...updatedScope,
+        ['_' + actualKey]: oldScope[actualKey].value,
+        get [actualKey]() {
+          return this['_' + actualKey];
+        },
+        set [actualKey](newValue) {
+          this['_' + actualKey] = newValue;
+        },
+      };
     }
     return { ...updatedScope };
   }, {});
 }
+
 /**
  * Appends or replace updated view
  * @param {HTMLElement} fatherViewRef
