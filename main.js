@@ -10,13 +10,13 @@ function renderDom(virtualDom, forceRerender = false, fatherViewRef, fatherScope
     const type = virtualDom[componentName].type;
     switch (type) {
       case TYPEZ.TEXT:
-        renderPlainText(virtualDom, componentName, fatherViewRef);
+        renderPlainText(virtualDom, componentName, fatherViewRef, forceRerender);
         break;
       case TYPEZ.HTML:
         renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender);
         break;
       case TYPEZ.STATE:
-        renderState(virtualDom, componentName, fatherViewRef, fatherScope);
+        renderState(virtualDom, componentName, fatherViewRef, fatherScope, forceRerender);
         break;
       default:
         renderComponent(virtualDom, componentName, fatherViewRef, forceRerender);
@@ -30,9 +30,13 @@ function renderDom(virtualDom, forceRerender = false, fatherViewRef, fatherScope
  * @param {String} componentName
  * @param {Html} fatherViewRef
  */
-function renderPlainText(virtualDom, componentName, fatherViewRef) {
-  console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt);
-  fatherViewRef.textContent = virtualDom[componentName].txt;
+function renderPlainText(virtualDom, componentName, fatherViewRef, reRender) {
+  if (reRender) {
+    console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt);
+    fatherViewRef.textContent = virtualDom[componentName].txt;
+  } else {
+    console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt + ' nothing to do');
+  }
 }
 /**
  * Renders a state
@@ -42,26 +46,36 @@ function renderPlainText(virtualDom, componentName, fatherViewRef) {
  * @param {HTMLElement} fatherViewRef
  * @param {Object} scope
  */
-function renderState(virtualDom, componentName, fatherViewRef, scope) {
-  if (!!!scope) return;
+function renderState(virtualDom, componentName, fatherViewRef, scope, reRender) {
   const { name } = virtualDom[componentName];
+  if (!reRender) {
+    console.info('STATE RENDERING -> ' + name + ' nothing to do');
+    return;
+  }
+  if (!!!scope) return;
   console.info('STATE RENDERING -> ' + name);
   if (!scope[name]) throw new Error('Missing scope state');
   fatherViewRef.textContent = scope[name].value;
 }
 /**
- * Renders plain html
+ * Renders plain html according to reRender prop
  * @param {Object} virtualDom
  * @param {String} componentName
  * @param {HTMLElement} fatherViewRef
- * @param {boolean} forceRerender
+ * @param {boolean} reRender
  */
-function renderHtmlElement(virtualDom, componentName, fatherViewRef, forceRerender) {
+function renderHtmlElement(virtualDom, componentName, fatherViewRef, reRender) {
   const { tag, cssClasses, children, actions = null, scope } = virtualDom[componentName];
-  console.info('HTML RENDERING -> ' + tag);
-  const newView = createHtmlElement(tag, cssClasses, actions, scope);
-  appendView(fatherViewRef, newView);
-  recursiveRender(children, forceRerender, newView, scope);
+  let componentView;
+  if (reRender) {
+    componentView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
+    appendView(fatherViewRef, componentView);
+    console.info('HTML RENDERING -> ' + tag + ' rebuilt');
+  } else {
+    componentView = document.getElementById(componentName);
+    console.info('HTML RENDERING -> ' + tag + ' no changes detected');
+  }
+  recursiveRender(children, reRender, componentView, scope);
 }
 /**
  * Renders a component only if forceRerender is true
@@ -80,11 +94,18 @@ function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender
     actions = null,
     scope = {},
   } = virtualDom[componentName];
-  console.info('COMPONENT RENDERING -> ' + componentName);
-  const newView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
-  if (forceRerender || rebuild) appendView(fatherViewRef, newView, rebuild && componentName);
-  recursiveRender(children, forceRerender || rebuild, newView, scope);
-  virtualDom[componentName].rebuild = false;
+  const redrawView = forceRerender || rebuild;
+  let componentView;
+  if (redrawView) {
+    virtualDom[componentName].rebuild = false;
+    componentView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
+    appendView(fatherViewRef, componentView, rebuild && componentName);
+    console.info('COMPONENT RENDERING -> ' + componentName + ' rebuilt');
+  } else {
+    componentView = document.getElementById(componentName);
+    console.info('COMPONENT RENDERING -> ' + componentName + ' no changes detected');
+  }
+  recursiveRender(children, redrawView, componentView, scope);
 }
 /**
  *
@@ -108,7 +129,6 @@ function createHtmlElement(tag, cssClasses, actions, scope = {}, id = null) {
 // rimuovere la roba scope con il this (deve essere una const tipo singleton)
 // a ogni azione creare un nuovo virtual dom o simile
 // diffing e update del vecchio
-// re rendering
 /**
  * Binds actions to template according to type event
  * @param {HTMLElement} template
@@ -142,6 +162,8 @@ function formatScope(oldScope) {
         },
         set [actualKey](newValue) {
           this['_' + actualKey] = newValue;
+          // updateVirtualDom(VIRTUAL_DOM);
+          renderDom(VIRTUAL_DOM, false, document.getElementById(ROOT_ID));
         },
       };
     }
@@ -168,4 +190,10 @@ function appendView(fatherViewRef, newView, componentName) {
  */
 function recursiveRender(children, rebuild, newView, fatherScope) {
   if (!!Object.keys(children)) renderDom(children, rebuild, newView, fatherScope);
+}
+
+function updateVirtualDom(VIRTUAL_DOM) {
+  for (componentKey in VIRTUAL_DOM) {
+    console.log(componentKey);
+  }
 }
