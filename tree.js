@@ -1,4 +1,4 @@
-const VIRTUAL_DOM = {
+let VIRTUAL_DOM = {
   rootComponent_0: {
     tag: 'div',
     type: TYPEZ.COMPONENT,

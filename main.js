@@ -34,8 +34,6 @@ function renderPlainText(virtualDom, componentName, fatherViewRef, reRender) {
   if (reRender) {
     console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt);
     fatherViewRef.textContent = virtualDom[componentName].txt;
-  } else {
-    console.info('TEXT RENDERING -> ' + virtualDom[componentName].txt + ' nothing to do');
   }
 }
 /**
@@ -49,7 +47,6 @@ function renderPlainText(virtualDom, componentName, fatherViewRef, reRender) {
 function renderState(virtualDom, componentName, fatherViewRef, scope, reRender) {
   const { name } = virtualDom[componentName];
   if (!reRender) {
-    console.info('STATE RENDERING -> ' + name + ' nothing to do');
     return;
   }
   if (!!!scope) return;
@@ -70,10 +67,9 @@ function renderHtmlElement(virtualDom, componentName, fatherViewRef, reRender) {
   if (reRender) {
     componentView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
     appendView(fatherViewRef, componentView);
-    console.info('HTML RENDERING -> ' + tag + ' rebuilt');
+    console.info('HTML RENDERING -> ' + tag);
   } else {
     componentView = document.getElementById(componentName);
-    console.info('HTML RENDERING -> ' + tag + ' no changes detected');
   }
   recursiveRender(children, reRender, componentView, scope);
 }
@@ -100,10 +96,9 @@ function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender
     virtualDom[componentName].rebuild = false;
     componentView = createHtmlElement(tag, cssClasses, actions, scope, componentName);
     appendView(fatherViewRef, componentView, rebuild && componentName);
-    console.info('COMPONENT RENDERING -> ' + componentName + ' rebuilt');
+    console.info('COMPONENT RENDERING -> ' + componentName);
   } else {
     componentView = document.getElementById(componentName);
-    console.info('COMPONENT RENDERING -> ' + componentName + ' no changes detected');
   }
   recursiveRender(children, redrawView, componentView, scope);
 }
@@ -113,31 +108,28 @@ function renderComponent(virtualDom, componentName, fatherViewRef, forceRerender
  * @param {String[]} cssClasses
  * @param {{type: ACTION_TYPEZ, fn: Function}[]} actions
  * @param {{[key: string]: {type: SCOPE_TYPEZ, value: any}}} scope
- * @param {String} id
+ * @param {String} componentName
  * @returns {HTMLElement}
  */
-function createHtmlElement(tag, cssClasses, actions, scope = {}, id = null) {
+function createHtmlElement(tag, cssClasses, actions, scope = {}, componentName = null) {
   const newView = document.createElement(tag);
   if (!!actions && actions.length)
-    actions.forEach((action) => addActionToTemplate(newView, action, scope));
+    actions.forEach((action) => addActionToTemplate(newView, action, scope, componentName));
   if (!!cssClasses.length) newView.classList.add([...cssClasses]);
-  if (id) newView.setAttribute('id', id);
+  if (componentName) newView.setAttribute('id', componentName);
   return newView;
 }
 
-// TODO
-// rimuovere la roba scope con il this (deve essere una const tipo singleton)
-// a ogni azione creare un nuovo virtual dom o simile
-// diffing e update del vecchio
 /**
  * Binds actions to template according to type event
  * @param {HTMLElement} template
  * @param {{type: ACTION_TYPEZ, fn: Function}} action
  * @param {{[key: string]: {type: SCOPE_TYPEZ, value: any}}} scope
+ * @param {String} componentName
  */
-function addActionToTemplate(template, action, scope) {
+function addActionToTemplate(template, action, scope, componentName) {
   let { type, fn } = action;
-  fn = fn.bind(formatScope(scope));
+  fn = fn.bind(formatScope(scope, componentName));
   switch (type) {
     case ACTION_TYPEZ.CLICK:
       template.addEventListener('click', fn);
@@ -148,10 +140,13 @@ function addActionToTemplate(template, action, scope) {
 }
 /**
  * Format the scope to bind it to the action
+ * when a property is set the setter method also updates the virtual dom a
+ * and redraw the view
  * @param {{[key: string]: {type: SCOPE_TYPEZ, value: any}}} scope
+ * @param {String} componentName
  * @returns {Object}
  */
-function formatScope(oldScope) {
+function formatScope(oldScope, componentName) {
   return Object.keys(oldScope).reduce((updatedScope, actualKey) => {
     if (oldScope[actualKey].type === SCOPE_TYPEZ.STATE) {
       return {
@@ -162,7 +157,7 @@ function formatScope(oldScope) {
         },
         set [actualKey](newValue) {
           this['_' + actualKey] = newValue;
-          // updateVirtualDom(VIRTUAL_DOM);
+          VIRTUAL_DOM = updateVirtualDom(VIRTUAL_DOM, componentName, { [actualKey]: newValue });
           renderDom(VIRTUAL_DOM, false, document.getElementById(ROOT_ID));
         },
       };
@@ -178,7 +173,7 @@ function formatScope(oldScope) {
  * @param {String} componentName
  */
 function appendView(fatherViewRef, newView, componentName) {
-  if (!!componentName) fatherViewRef.getElementById(componentName).replaceWith(newView);
+  if (!!componentName) document.getElementById(componentName).replaceWith(newView);
   else fatherViewRef.appendChild(newView);
 }
 /**
@@ -192,8 +187,70 @@ function recursiveRender(children, rebuild, newView, fatherScope) {
   if (!!Object.keys(children)) renderDom(children, rebuild, newView, fatherScope);
 }
 
-function updateVirtualDom(VIRTUAL_DOM) {
-  for (componentKey in VIRTUAL_DOM) {
-    console.log(componentKey);
+/**
+ * If the evaluated component is the one wich originated the update.
+ * In this case updates the component scope and set is rebuild property to true
+ *
+ * @param {Object} componentRef
+ * @param {Object} updateDVirtualDom
+ * @param {Object} updatedComponentScope
+ * @param {boolean} rebuild
+ */
+function targetForRebuildIfNecessary(
+  componentRef,
+  updateDVirtualDom,
+  updatedComponentScope,
+  rebuild
+) {
+  if (componentRef.hasOwnProperty('rebuild') && componentRef.hasOwnProperty('scope')) {
+    const scope = { ...componentRef.scope, ...(rebuild && updatedComponentScope) };
+    if (rebuild) {
+      Object.keys(updatedComponentScope).forEach((propToUpdate) => {
+        scope[propToUpdate].value = updatedComponentScope[propToUpdate].value;
+      });
+    }
+    updateDVirtualDom = {
+      ...updateDVirtualDom,
+      rebuild,
+      scope,
+    };
   }
+}
+
+/**
+ * Creates a new virtual dom updating the scope of the component wich originates
+ * the update and targets it for redrawing process
+ * @param {Object} virtualDomTree
+ * @param {String} componentToBeUpdatedKey
+ * @param {Object} updatedScopeObject
+ * @returns
+ */
+function updateVirtualDom(virtualDomTree, componentToBeUpdatedKey, updatedScopeObject) {
+  if (JSON.stringify(virtualDomTree) === '{}') return virtualDomTree;
+  const updatedTree = {};
+  for (componentKey in virtualDomTree) {
+    updatedTree[componentKey] = { ...virtualDomTree[componentKey] };
+    const updatedTreeComponwentRef = updatedTree[componentKey];
+    const isAComponentAndMustBeUpdated =
+      (objectHasProperties(updatedTreeComponwentRef), 'rebuild', 'scope') &&
+      componentToBeUpdatedKey === componentKey;
+    if (isAComponentAndMustBeUpdated) {
+      updatedTreeComponwentRef.rebuild = true;
+      Object.keys(updatedScopeObject).forEach(
+        (key) => (updatedTreeComponwentRef.scope[key].value = updatedScopeObject[key])
+      );
+    }
+    if ((objectHasProperties(updatedTreeComponwentRef), 'children')) {
+      updatedTreeComponwentRef.children = updateVirtualDom(
+        updatedTreeComponwentRef.children,
+        componentToBeUpdatedKey,
+        updatedScopeObject
+      );
+    }
+  }
+  return updatedTree;
+}
+
+function objectHasProperties(obj, ...properties) {
+  return properties.every((p) => obj.hasOwnProperty(p));
 }
