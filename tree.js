@@ -73,18 +73,15 @@ let VIRTUAL_DOM = {
           {
             type: ACTION_TYPEZ.CLICK,
             fn() {
-              this.niceNumber++;
+              const prevN = Number(this.btnLabel.split('->')[1]);
+              this.btnLabel = 'Augment -> ' + (prevN + 1);
             },
           },
         ],
         scope: {
           btnLabel: {
             type: SCOPE_TYPEZ.STATE,
-            value: 'actionnnn',
-          },
-          niceNumber: {
-            type: SCOPE_TYPEZ.STATE,
-            value: 1,
+            value: 'Augment -> 1',
           },
         },
         children: {
